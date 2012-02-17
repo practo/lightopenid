@@ -769,23 +769,42 @@ class LightOpenID
         }
 
         $attributes = array();
-        foreach (explode(',', $this->data['openid_signed']) as $key) {
-            $keyMatch = $alias . '.value.';
-            if (substr($key, 0, strlen($keyMatch)) != $keyMatch) {
+        $signedKeys = explode(',', str_replace('.', '_', $this->data['openid_signed']));
+        $data = $this->data;
+        $getSigned = function($key) use ($signedKeys, $data) {
+            if (in_array($key, $signedKeys) && isset($data['openid_' . $key])) {
+                return $data['openid_' . $key];
+            } else {
+                return null;
+            }
+        };
+        foreach ($signedKeys as $signedKey) {
+            $typeKeyPrefix = $alias . '_type_';
+            if (substr($signedKey, 0, strlen($typeKeyPrefix)) != $typeKeyPrefix) {
                 continue;
             }
-            $key = substr($key, strlen($keyMatch));
-            if (!isset($this->data['openid_' . $alias . '_type_' . $key])) {
-                # OP is breaking the spec by returning a field without
-                # associated ns. This shouldn't happen, but it's better
-                # to check, than cause an E_NOTICE.
-                continue;
+            $attrName = substr($signedKey, strlen($typeKeyPrefix));
+            $countKey = $alias . '_count_' . $attrName;
+            if (!is_null($count = $getSigned($countKey))) {
+                if ($count == 0) {
+                    continue;
+                } else if ($count == 1) {
+                    $value = $getSigned($alias . '_value_' . $attrName. '_1');
+                } else {
+                    $value = array();
+                    for($i = 0; $i < $count; $i++) {
+                        $value[]= $getSigned($alias . '_value_' . $attrName . '_' . $i);
+                    }
+                }
+            } else {
+                $value = $getSigned($alias . '_value_' . $attrName);
             }
-            $value = $this->data['openid_' . $alias . '_value_' . $key];
-            $key = substr($this->data['openid_' . $alias . '_type_' . $key],
+            $axAttrName = substr($this->data['openid_' . $alias . '_type_' . $attrName],
                           strlen('http://axschema.org/'));
-
-            $attributes[$key] = $value;
+            if (is_null($value)) {
+                continue;
+            }
+            $attributes[$axAttrName] = $value;
         }
         return $attributes;
     }
