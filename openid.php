@@ -747,7 +747,7 @@ class LightOpenID
     {
         $alias = null;
         if (isset($this->data['openid_ns_ax'])
-            && $this->data['openid_ns_ax'] != 'http://openid.net/srv/ax/1.0'
+            && $this->data['openid_ns_ax'] == 'http://openid.net/srv/ax/1.0'
         ) { # It's the most likely case, so we'll check it before
             $alias = 'ax';
         } else {
